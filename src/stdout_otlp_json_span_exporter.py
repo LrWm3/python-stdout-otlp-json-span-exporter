@@ -86,6 +86,8 @@ class SimpleStdoutOtlpJsonSpanExporter(SpanExporter):
                         scope_dict["name"] = scope.name
                     if getattr(scope, "version", None):
                         scope_dict["version"] = scope.version
+                    if getattr(scope, "attributes", None):
+                        scope_dict["attributes"] = _attrs(scope.attributes)
 
                 obj = {
                     "traceId": _hex_trace_id(ctx.trace_id),

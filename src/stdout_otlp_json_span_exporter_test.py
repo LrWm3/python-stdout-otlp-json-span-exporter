@@ -1,9 +1,4 @@
 import json
-import pytest
-from opentelemetry.sdk.trace import _Span
-from opentelemetry.sdk.trace import ReadableSpan
-from opentelemetry.trace import TraceState
-from opentelemetry.trace.span import SpanContext, TraceFlags
 from opentelemetry.sdk.resources import Resource
 from stdout_otlp_json_span_exporter import SimpleStdoutOtlpJsonSpanExporter
 
@@ -63,7 +58,7 @@ def test_export_writes_otlp_json_line_to_stdout(capsys):
     span = make_span()
 
     # WHEN exporting the span
-    res = exporter.export([span])
+    res = exporter.export([span])  # pyright: ignore[reportArgumentType]
 
     # THEN the exporter returns SUCCESS and stdout contains one JSON line with expected fields
     assert res is not None
@@ -94,7 +89,7 @@ def test_export_multiple_spans_writes_multiple_spans(capsys):
     spans = [make_span(i) for i in range(3)]
 
     # WHEN exporting
-    exporter.export(spans)
+    exporter.export(spans)  # pyright: ignore[reportArgumentType]
 
     # THEN stdout contains a payload with three spans
     captured = capsys.readouterr()
