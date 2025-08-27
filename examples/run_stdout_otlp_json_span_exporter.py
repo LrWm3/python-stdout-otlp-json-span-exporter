@@ -33,7 +33,22 @@ def main():
     set_tracer_provider(provider)
 
     # Create exporter from this repo and add to provider via BatchSpanProcessor
-    exporter = SimpleStdoutOtlpJsonSpanExporter()
+
+    # default omits
+    # exporter = SimpleStdoutOtlpJsonSpanExporter()
+
+    # custom omits to focus only on timing + custom attributes
+    exporter = SimpleStdoutOtlpJsonSpanExporter(
+        omit_list=[
+            "traceId",
+            "spanId",
+            "parentSpanId",
+            "resource",
+            "status",
+            "kind",
+            "scope",
+        ]
+    )
     processor = BatchSpanProcessor(exporter)
     provider.add_span_processor(processor)
 

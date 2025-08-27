@@ -6,28 +6,24 @@ from opentelemetry.sdk.trace.export import SpanExporter, SpanExportResult
 from opentelemetry.sdk.resources import Resource
 
 
-def _any_value(v: Any) -> Dict[str, Any]:
+def _any_value(v: Any) -> Any:
     if isinstance(v, bool):
-        return {"boolValue": v}
+        return v
     if isinstance(v, int):
-        return {"intValue": v}
+        return v
     if isinstance(v, float):
-        return {"doubleValue": v}
+        return v
     if isinstance(v, str):
-        return {"stringValue": v}
+        return v
     if isinstance(v, (list, tuple)):
-        return {"arrayValue": {"values": [_any_value(x) for x in v]}}
+        return [_any_value(i) for i in v]
     if isinstance(v, dict):
-        return {
-            "kvlistValue": {
-                "values": [{"key": k, "value": _any_value(val)} for k, val in v.items()]
-            }
-        }
-    return {"stringValue": str(v)}
+        return {str(k): _any_value(val) for k, val in v.items()}
+    return str(v)
 
 
-def _attrs(attributes: Dict[str, Any]) -> List[Dict[str, Any]]:
-    return [{"key": k, "value": _any_value(v)} for k, v in (attributes or {}).items()]
+def _attrs(attributes: Dict[str, Any]) -> Dict[str, Any]:
+    return {k: _any_value(v) for k, v in (attributes or {}).items()}
 
 
 def _hex_trace_id(tid: int) -> str:
@@ -60,7 +56,7 @@ class SimpleStdoutOtlpJsonSpanExporter(SpanExporter):
         self._stopped = False
         self._lock = threading.Lock()
         self._resource = resource or Resource.create({})
-        self._omit_list = omit_list or DEFAULT_OMIT_LIST
+        self._omit_list = omit_list if omit_list is not None else DEFAULT_OMIT_LIST
 
     def shutdown(self) -> None:
         self._stopped = True
@@ -96,8 +92,7 @@ class SimpleStdoutOtlpJsonSpanExporter(SpanExporter):
                         "" if parent is None else _hex_span_id(parent.span_id)
                     ),
                     "name": s.name,
-                    # omit kind
-                    # "kind": str(s.kind),
+                    "kind": str(s.kind),
                     "startTimeUnixNano": str(s.start_time),
                     "endTimeUnixNano": str(s.end_time),
                     "attributes": _attrs(s.attributes or {}),
@@ -129,8 +124,6 @@ class SimpleStdoutOtlpJsonSpanExporter(SpanExporter):
                     obj.pop("events")
                 if not obj["links"]:
                     obj.pop("links")
-                if not obj["scope"]:
-                    obj.pop("scope")
 
                 for omit in self._omit_list:
                     obj.pop(omit, None)

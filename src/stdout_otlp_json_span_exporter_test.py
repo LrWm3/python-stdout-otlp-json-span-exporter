@@ -41,6 +41,11 @@ class SimpleReadableSpan:
         self.dropped_links = 0
         self.status = None
         self.kind = 0
+        self.status = type(
+            "Status",
+            (),
+            {"status_code": type("StatusCode", (), {"value": 0}), "description": ""},
+        )()
 
 
 def make_span(i=0):
@@ -54,7 +59,7 @@ def make_span(i=0):
 
 def test_export_writes_otlp_json_line_to_stdout(capsys):
     # GIVEN an exporter and a simple span
-    exporter = SimpleStdoutOtlpJsonSpanExporter()
+    exporter = SimpleStdoutOtlpJsonSpanExporter(omit_list=[])
     span = make_span()
 
     # WHEN exporting the span
@@ -66,26 +71,10 @@ def test_export_writes_otlp_json_line_to_stdout(capsys):
     out = captured.out.strip()
     assert out, "Expected exporter to write to stdout"
 
-    payload = json.loads(out)
-    assert "resourceSpans" in payload
-    rs = payload["resourceSpans"]
-    assert isinstance(rs, list) and len(rs) == 1
-    scopeSpans = rs[0]["scopeSpans"]
-    assert isinstance(scopeSpans, list) and len(scopeSpans) == 1
-    spans = scopeSpans[0]["spans"]
-    assert isinstance(spans, list) and len(spans) == 1
-    s = spans[0]
-    assert s["name"] == span.name
-    assert s["traceId"] == format(span.context.trace_id, "032x")
-    assert s["spanId"] == format(span.context.span_id, "016x")
-    assert (
-        any(a["key"] == "http.method" for a in s["attributes"]) or s["attributes"] == []
-    )
-
 
 def test_export_multiple_spans_writes_multiple_spans(capsys):
     # GIVEN exporter and multiple spans
-    exporter = SimpleStdoutOtlpJsonSpanExporter()
+    exporter = SimpleStdoutOtlpJsonSpanExporter(omit_list=[])
     spans = [make_span(i) for i in range(3)]
 
     # WHEN exporting
@@ -93,22 +82,20 @@ def test_export_multiple_spans_writes_multiple_spans(capsys):
 
     # THEN stdout contains a payload with three spans
     captured = capsys.readouterr()
-    payload = json.loads(captured.out.strip())
-    spans_out = payload["resourceSpans"][0]["scopeSpans"][0]["spans"]
-    assert len(spans_out) == 3
+    assert captured.out, "Expected exporter to write to stdout"
 
-
-def test_export_empty_list_writes_empty_resourceSpans(capsys):
-    # GIVEN exporter
-    exporter = SimpleStdoutOtlpJsonSpanExporter()
-
-    # WHEN exporting empty list
-    res = exporter.export([])
-
-    # THEN stdout should contain resourceSpans empty list
-    captured = capsys.readouterr()
-    out = captured.out.strip()
-    assert out
-    payload = json.loads(out)
-    assert payload.get("resourceSpans") == []
-    assert res is not None
+    lines = captured.out.strip().split("\n")
+    assert len(lines) == 3, f"Expected 3 lines, got {len(lines)}"
+    for i, line in enumerate(lines):
+        obj = json.loads(line)
+        assert obj["name"] == f"span-{i}"
+        assert obj["spanId"] == f"{i + 1:016x}"
+        assert obj["traceId"] == "0123456789abcdef0123456789abcdef"
+        assert obj["attributes"]["http.method"] == "GET"
+        assert obj["attributes"]["http.status_code"] == 200
+        assert "resource" in obj
+        assert "status" in obj
+        assert "kind" in obj
+        assert "scope" in obj
+        assert "events" not in obj
+        assert "links" not in obj
