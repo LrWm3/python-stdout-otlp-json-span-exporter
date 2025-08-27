@@ -1,4 +1,4 @@
-# OpenTelemetry Python Example
+# Python OpenTelemetry Stdout Otlp Json Span Exporter Example
 
 This is a simple example of using the OpenTelemetry Python SDK to create and export spans in OTLP JSON format to stdout.
 
